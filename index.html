@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Stage Clock">
+<title>Poskomelodi Live Stage Timer & Countdown</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #080c14;
+    color: #f8fafc;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+    padding: 14px 16px;
+    user-select: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    width: 100vw;
+  }
+  .stage-card {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    max-width: 480px;
+    background: #080c14;
+    border-radius: 14px;
+    border: 1px solid #1e293b;
+    padding: 16px;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.6);
+  }
+
+  @media (min-width: 768px) {
+    /* iPad / Tablet */
+    .stage-card {
+      max-width: 620px;
+      padding: 22px;
+      gap: 16px;
+    }
+    .clock-digits {
+      font-size: 64px !important;
+    }
+    .gate-countdown {
+      font-size: 32px !important;
+    }
+    .current-act {
+      font-size: 18px !important;
+    }
+    .stage-countdown-pill {
+      font-size: 14px !important;
+      padding: 4px 12px !important;
+    }
+    .pills .pt {
+      font-size: 13px !important;
+    }
+    .pill {
+      padding: 8px 4px !important;
+      font-size: 11px !important;
+    }
+  }
+
+  .top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: #94a3b8;
+    text-transform: uppercase;
+  }
+  .live-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: #ef4444;
+    border-radius: 50%;
+    margin-right: 6px;
+    box-shadow: 0 0 8px #ef4444;
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse {
+    0% { opacity: 0.6; transform: scale(0.95); }
+    50% { opacity: 1; transform: scale(1.2); }
+    100% { opacity: 0.6; transform: scale(0.95); }
+  }
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-action {
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #38bdf8;
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-action:hover {
+    background: #38bdf8;
+    color: #080c14;
+  }
+  .sync-badge {
+    font-size: 9px;
+    font-weight: 700;
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    padding: 2px 7px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .sync-badge:hover {
+    background: rgba(16, 185, 129, 0.25);
+  }
+  
+  /* Dual Clock & Countdown Display */
+  .clock-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #0d1424;
+    border: 1px solid #1a2642;
+    border-radius: 10px;
+    padding: 12px 16px;
+  }
+  .main-clock {
+    display: flex;
+    flex-direction: column;
+  }
+  .clock-digits {
+    font-size: 48px;
+    font-weight: 900;
+    line-height: 1;
+    color: #10b981;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 2px;
+    text-shadow: 0 0 20px rgba(16, 185, 129, 0.35);
+  }
+  .clock-sub {
+    font-size: 10px;
+    color: #64748b;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-top: 4px;
+    text-transform: uppercase;
+  }
+  
+  .gate-countdown-box {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+  .countdown-label {
+    font-size: 9px;
+    font-weight: 800;
+    color: #38bdf8;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .gate-countdown {
+    font-size: 24px;
+    font-weight: 900;
+    color: #38bdf8;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 1px;
+    margin-top: 2px;
+    text-shadow: 0 0 12px rgba(56, 189, 248, 0.35);
+  }
+  .gate-target {
+    font-size: 10px;
+    color: #94a3b8;
+    font-weight: 600;
+  }
+
+  /* Active Stage Card */
+  .current-card {
+    background: #111a30;
+    border: 1px solid #1e2e54;
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .stage-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .current-title {
+    font-size: 10px;
+    font-weight: 800;
+    color: #38bdf8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .stage-countdown-pill {
+    font-size: 11px;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.5px;
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.3);
+  }
+  .stage-countdown-pill.warning {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fbbf24;
+    border-color: rgba(245, 158, 11, 0.5);
+  }
+  .stage-countdown-pill.overdue {
+    background: rgba(239, 68, 68, 0.25);
+    color: #f87171;
+    border-color: #ef4444;
+    animation: flash 1s infinite;
+  }
+  @keyframes flash {
+    0% { opacity: 0.7; }
+    50% { opacity: 1; }
+    100% { opacity: 0.7; }
+  }
+
+  .current-act {
+    font-size: 14px;
+    font-weight: 800;
+    color: #f8fafc;
+    line-height: 1.2;
+  }
+  
+  /* Progress Bar */
+  .progress-wrap {
+    width: 100%;
+    height: 5px;
+    background: #1e293b;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: #10b981;
+    width: 0%;
+    transition: width 0.3s;
+  }
+
+  .current-meta {
+    font-size: 11px;
+    color: #94a3b8;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  /* Timeline Pills */
+  .pills {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    font-size: 9px;
+    text-align: center;
+  }
+  .pill {
+    background: #0f172a;
+    border: 1px solid #1e293b;
+    border-radius: 6px;
+    padding: 6px 2px;
+    color: #94a3b8;
+    transition: all 0.2s;
+  }
+  .pill.active {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: #10b981;
+    color: #34d399;
+    font-weight: 700;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+  }
+  .pill .pt { font-weight: 800; font-size: 11px; display: block; }
+
+  /* Footer */
+  .footer-row {
+    font-size: 10px;
+    color: #64748b;
+    border-top: 1px solid #1e293b;
+    padding-top: 6px;
+    display: flex;
+    justify-content: space-between;
+  }
+</style>
+</head>
+<body>
+<div class="stage-card" id="main-card">
+  <div class="top-bar">
+    <span><span class="live-dot"></span>STAGE TIME & COUNTDOWN (WIB)</span>
+    <div class="actions">
+      <span class="sync-badge" id="sync-status" onclick="syncFromSheet()" title="Klik untuk refresh dari spreadsheet">🟢 SYNC LIVE</span>
+      <button class="btn-action" id="btn-fullscreen" onclick="toggleFullScreen()" title="Fullscreen di iPad">⛶ FULL</button>
+      <button class="btn-action" id="btn-pip" onclick="togglePiP()" title="Floating window di Mac">⧉ FLOAT</button>
+    </div>
+  </div>
+
+  <div class="clock-section">
+    <div class="main-clock">
+      <div class="clock-digits" id="live-clock">--:--:--</div>
+      <div class="clock-sub" id="live-date">Sabtu, 3 Okt · GMT+7</div>
+    </div>
+    <div class="gate-countdown-box">
+      <span class="countdown-label">🎯 MENUJU OPEN GATE</span>
+      <span class="gate-countdown" id="gate-cd">--:--:--</span>
+      <span class="gate-target">Pukul 15:00 WIB</span>
+    </div>
+  </div>
+
+  <div class="current-card">
+    <div class="stage-header-row">
+      <div class="current-title" id="act-title">TAHAP AKTIF (ON STAGE)</div>
+      <div class="stage-countdown-pill" id="stage-cd-pill">⏳ --:--</div>
+    </div>
+    <div class="current-act" id="act-name">Memuat jadwal dari DRAW-TR...</div>
+    <div class="progress-wrap">
+      <div class="progress-fill" id="stage-progress"></div>
+    </div>
+    <div class="current-meta">
+      <span id="act-window">--:-- s/d --:-- WIB</span>
+      <span id="act-standby" style="color: #fbbf24; font-weight: 700;">--</span>
+    </div>
+  </div>
+
+  <div class="pills">
+    <div class="pill" id="pill-1"><span class="pt" id="pill-1-t">09.30</span>GAHBM</div>
+    <div class="pill" id="pill-2"><span class="pt" id="pill-2-t">13.00</span>ISHOMA</div>
+    <div class="pill" id="pill-3"><span class="pt" id="pill-3-t">13.30</span>RE:NAN</div>
+    <div class="pill" id="pill-4"><span class="pt" id="pill-4-t">15.00</span>GATE</div>
+  </div>
+
+  <div class="footer-row">
+    <span>Time Keeper: <b>Wawa (CH1)</b></span>
+    <span style="color: #38bdf8;">Spreadsheet: <b>DRAW-TR Live</b></span>
+    <span style="color: #10b981;">Target Show: <b>15.00 ON TIME</b></span>
+  </div>
+</div>
+
+<script>
+  const CSV_URL = 'https://docs.google.com/spreadsheets/d/1KoGapzdRl9ebrVtRn8nO_7zvsjrlVep4urWm6n-CDg0/gviz/tq?tqx=out:csv&gid=1215357679';
+
+  let schedule = [
+    { start: "06:30", end: "09:30", name: "Loading in, sound ready & fine-tuning", next: "—" },
+    { start: "09:30", end: "10:30", name: "Checksound GAHBM (Headliner)", next: "WIKI PMDJI standby 10.15" },
+    { start: "10:30", end: "11:30", name: "Line check WIKI PMDJI", next: "CONFLATED standby 11.15" },
+    { start: "11:30", end: "12:00", name: "Line check CONFLATED", next: "MERAH standby 11.45" },
+    { start: "12:00", end: "12:30", name: "Line check MERAH", next: "SWEETER standby 12.15" },
+    { start: "12:30", end: "13:00", name: "Line check SWEETER", next: "RE:NAN standby 13.15" },
+    { start: "13:00", end: "13:30", name: "ISHOMA crew teknis / buffer", next: "RE:NAN standby 13.15" },
+    { start: "13:30", end: "14:30", name: "Checksound RE:NAN", next: "SWEETER standby 14.15" },
+    { start: "14:30", end: "15:00", name: "Reset stage ke set SWEETER + line check MC", next: "SWEETER siap 15.00" },
+    { start: "15:00", end: "15:40", name: "Persiapan opening + setting SWEETER", next: "SWEETER di sayap 15.35" },
+    { start: "15:40", end: "15:50", name: "Opening Poskomelodi (MC)", next: "SWEETER di sayap" },
+    { start: "15:50", end: "16:25", name: "Perform SWEETER", next: "MERAH di backstage 16.15" },
+    { start: "16:35", end: "17:10", name: "Perform MERAH", next: "CONFLATED di backstage 17.00" },
+    { start: "17:30", end: "18:05", name: "Perform CONFLATED", next: "WIKI PMDJI di backstage" },
+    { start: "18:35", end: "19:10", name: "Perform WIKI PMDJI", next: "RE:NAN di backstage" },
+    { start: "19:20", end: "20:20", name: "Perform RE:NAN", next: "GAHBM di backstage 20.00" },
+    { start: "20:35", end: "21:35", name: "Perform GAHBM", next: "Outro & Closing Gate" },
+    { start: "21:35", end: "23:59", name: "Loading out", next: "Selesai" }
+  ];
+
+  function toMin(timeStr) {
+    if (!timeStr) return 0;
+    const parts = timeStr.split(":");
+    return (parseInt(parts[0], 10) || 0) * 60 + (parseInt(parts[1], 10) || 0);
+  }
+
+  function toSec(timeStr) {
+    if (!timeStr) return 0;
+    const parts = timeStr.split(":");
+    return (parseInt(parts[0], 10) || 0) * 3600 + (parseInt(parts[1], 10) || 0) * 60;
+  }
+
+  function formatDuration(sec) {
+    const isNeg = sec < 0;
+    const abs = Math.abs(sec);
+    const m = Math.floor(abs / 60);
+    const s = abs % 60;
+    const prefix = isNeg ? '+' : '';
+    return prefix + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+  }
+
+  function formatHMS(sec) {
+    if (sec <= 0) return "00:00:00";
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+    return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+  }
+
+  function parseCSV(text) {
+    const lines = [];
+    let row = [""];
+    let inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      const next = text[i + 1];
+      if (c === '"') {
+        if (inQuotes && next === '"') {
+          row[row.length - 1] += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (c === ',' && !inQuotes) {
+        row.push('');
+      } else if ((c === '\r' || c === '\n') && !inQuotes) {
+        if (c === '\r' && next === '\n') i++;
+        lines.push(row);
+        row = [''];
+      } else {
+        row[row.length - 1] += c;
+      }
+    }
+    if (row.length > 1 || row[0] !== '') lines.push(row);
+    return lines;
+  }
+
+  async function syncFromSheet() {
+    const badge = document.getElementById('sync-status');
+    try {
+      if (badge) badge.textContent = '⏳ SYNC...';
+      const res = await fetch(CSV_URL + '&_t=' + Date.now());
+      if (!res.ok) throw new Error('Fetch status ' + res.status);
+      const csvText = await res.text();
+      const rows = parseCSV(csvText);
+
+      const newSched = [];
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i];
+        if (r.length >= 5) {
+          const no = (r[0] || '').trim();
+          let mulai = (r[1] || '').trim().replace('.', ':');
+          let selesai = (r[2] || '').trim().replace('.', ':');
+          const act = (r[4] || '').trim();
+          const standby = (r[11] || '—').trim();
+
+          const noNum = parseInt(no, 10);
+          if (!isNaN(noNum) && noNum >= 1 && noNum <= 25 && mulai && selesai) {
+            const pM = mulai.split(':');
+            const pS = selesai.split(':');
+            if (pM[0].length === 1) mulai = '0' + mulai;
+            if (pS[0].length === 1) selesai = '0' + selesai;
+
+            newSched.push({
+              no: noNum,
+              start: mulai.slice(0, 5),
+              end: selesai.slice(0, 5),
+              name: act,
+              next: standby
+            });
+          }
+        }
+      }
+
+      if (newSched.length >= 5) {
+        schedule = newSched;
+        const now = new Date();
+        const tStr = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+        if (badge) {
+          badge.textContent = '🟢 LIVE (' + tStr + ')';
+          badge.style.color = '#10b981';
+        }
+        updatePillsFromSchedule();
+        tick();
+      }
+    } catch (err) {
+      console.warn('Sync sheet error:', err);
+      if (badge) {
+        badge.textContent = '🟡 LOCAL CACHE';
+        badge.style.color = '#fbbf24';
+      }
+    }
+  }
+
+  function updatePillsFromSchedule() {
+    const findTime = (actSub) => {
+      const it = schedule.find(x => x.name.toLowerCase().includes(actSub.toLowerCase()));
+      return it ? it.start.replace(':', '.') : null;
+    };
+    const tG = findTime('GAHBM') || '09.30';
+    const tI = findTime('ISHOMA') || '13.00';
+    const tR = findTime('RE:NAN') || '13.30';
+    const tO = findTime('Open Gate') || '15.00';
+    
+    const p1El = document.getElementById('pill-1-t');
+    const p2El = document.getElementById('pill-2-t');
+    const p3El = document.getElementById('pill-3-t');
+    const p4El = document.getElementById('pill-4-t');
+    if (p1El) p1El.textContent = tG;
+    if (p2El) p2El.textContent = tI;
+    if (p3El) p3El.textContent = tR;
+    if (p4El) p4El.textContent = tO;
+  }
+
+  function tick() {
+    const now = new Date();
+    const curSec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+    const curMin = now.getHours() * 60 + now.getMinutes();
+
+    // 1. Live Clock
+    const h = String(now.getHours()).padStart(2, '0');
+    const m = String(now.getMinutes()).padStart(2, '0');
+    const s = String(now.getSeconds()).padStart(2, '0');
+    const clockEl = document.getElementById('live-clock');
+    if (clockEl) clockEl.textContent = h + ':' + m + ':' + s;
+
+    // 2. Countdown to Open Gate (15:00:00 = 54000 sec)
+    const gateTargetSec = 15 * 3600;
+    const diffGateSec = gateTargetSec - curSec;
+    const gateEl = document.getElementById('gate-cd');
+    if (gateEl) {
+      if (diffGateSec > 0) {
+        gateEl.textContent = formatHMS(diffGateSec);
+        gateEl.style.color = '#38bdf8';
+      } else {
+        gateEl.textContent = "GATE OPEN";
+        gateEl.style.color = '#10b981';
+      }
+    }
+
+    // 3. Find matched schedule item
+    let matched = null;
+    for (let i = 0; i < schedule.length; i++) {
+      const item = schedule[i];
+      const sMin = toMin(item.start);
+      const eMin = toMin(item.end);
+      if (curMin >= sMin && curMin < eMin) {
+        matched = item;
+        break;
+      }
+    }
+
+    const titleEl = document.getElementById('act-title');
+    const actEl = document.getElementById('act-name');
+    const winEl = document.getElementById('act-window');
+    const sbEl = document.getElementById('act-standby');
+    const stageCdPill = document.getElementById('stage-cd-pill');
+    const progFill = document.getElementById('stage-progress');
+
+    if (matched) {
+      const sSec = toSec(matched.start);
+      const eSec = toSec(matched.end);
+      const remSec = eSec - curSec;
+      const totalSlotSec = eSec - sSec;
+      const pct = Math.min(100, Math.max(0, ((curSec - sSec) / totalSlotSec) * 100));
+
+      if (titleEl) titleEl.textContent = "TAHAP AKTIF (ON STAGE)";
+      if (actEl) actEl.textContent = matched.name;
+      if (winEl) winEl.textContent = matched.start + ' – ' + matched.end + ' WIB';
+      if (sbEl) sbEl.textContent = '▶ ' + matched.next;
+
+      if (progFill) progFill.style.width = pct + '%';
+
+      if (stageCdPill) {
+        if (remSec > 300) {
+          stageCdPill.className = "stage-countdown-pill";
+          stageCdPill.textContent = "⏳ SISA " + formatDuration(remSec);
+          if (progFill) progFill.style.background = '#10b981';
+        } else if (remSec > 0) {
+          stageCdPill.className = "stage-countdown-pill warning";
+          stageCdPill.textContent = "⚠️ SISA " + formatDuration(remSec);
+          if (progFill) progFill.style.background = '#f59e0b';
+        } else {
+          stageCdPill.className = "stage-countdown-pill overdue";
+          stageCdPill.textContent = "🚨 OVERDUE " + formatDuration(remSec);
+          if (progFill) progFill.style.background = '#ef4444';
+        }
+      }
+    } else {
+      if (titleEl) titleEl.textContent = "STANDBY TIMELINE";
+      if (actEl) actEl.textContent = "Poskomelodi Khace Center";
+      if (winEl) winEl.textContent = "Timeline Berjalan";
+      if (sbEl) sbEl.textContent = "—";
+      if (stageCdPill) {
+        stageCdPill.className = "stage-countdown-pill";
+        stageCdPill.textContent = "STANDBY";
+      }
+      if (progFill) progFill.style.width = '0%';
+    }
+
+    // 4. Update timeline pills active state
+    const p1t = toMin((document.getElementById('pill-1-t') ? document.getElementById('pill-1-t').textContent : '09.30').replace('.', ':'));
+    const p2t = toMin((document.getElementById('pill-2-t') ? document.getElementById('pill-2-t').textContent : '13.00').replace('.', ':'));
+    const p3t = toMin((document.getElementById('pill-3-t') ? document.getElementById('pill-3-t').textContent : '13.30').replace('.', ':'));
+    const p4t = toMin((document.getElementById('pill-4-t') ? document.getElementById('pill-4-t').textContent : '15.00').replace('.', ':'));
+
+    const p1 = document.getElementById('pill-1');
+    const p2 = document.getElementById('pill-2');
+    const p3 = document.getElementById('pill-3');
+    const p4 = document.getElementById('pill-4');
+    if (p1) p1.className = (curMin >= p1t && curMin < p2t) ? "pill active" : "pill";
+    if (p2) p2.className = (curMin >= p2t && curMin < p3t) ? "pill active" : "pill";
+    if (p3) p3.className = (curMin >= p3t && curMin < p4t) ? "pill active" : "pill";
+    if (p4) p4.className = (curMin >= p4t && curMin < p4t + 40) ? "pill active" : "pill";
+  }
+
+  // WakeLock support for iPad/iPhone (screen never sleeps)
+  let wakeLock = null;
+  async function requestWakeLock() {
+    if ('wakeLock' in navigator) {
+      try {
+        wakeLock = await navigator.wakeLock.request('screen');
+        console.log('Screen WakeLock active!');
+      } catch (err) {
+        console.warn('WakeLock error:', err);
+      }
+    }
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (wakeLock !== null && document.visibilityState === 'visible') {
+      requestWakeLock();
+    }
+  });
+  window.addEventListener('touchstart', () => requestWakeLock(), { once: true });
+  requestWakeLock();
+
+  // Fullscreen support for iPad/Mac
+  function toggleFullScreen() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(err => {
+        alert('Fullscreen tidak diizinkan oleh browser: ' + err.message);
+      });
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  }
+
+  // Initial sync & interval auto-sync every 10s
+  updatePillsFromSchedule();
+  syncFromSheet();
+  setInterval(syncFromSheet, 10000);
+  setInterval(tick, 1000);
+  tick();
+
+  async function togglePiP() {
+    if ('documentPictureInPicture' in window) {
+      try {
+        const pipWin = await window.documentPictureInPicture.requestWindow({
+          width: 400,
+          height: 290
+        });
+        const styles = document.querySelector('style').cloneNode(true);
+        pipWin.document.head.appendChild(styles);
+        const clone = document.getElementById('main-card').cloneNode(true);
+        pipWin.document.body.appendChild(clone);
+        pipWin.document.body.style.background = '#080c14';
+        pipWin.document.body.style.padding = '8px';
+        pipWin.document.getElementById('btn-pip').style.display = 'none';
+        pipWin.document.getElementById('btn-fullscreen').style.display = 'none';
+
+        // Auto sync inside PiP every 10s
+        const pipSync = async () => {
+          try {
+            const res = await fetch(CSV_URL + '&_t=' + Date.now());
+            if (!res.ok) return;
+            const text = await res.text();
+            const rows = parseCSV(text);
+            const newSched = [];
+            for (let i = 0; i < rows.length; i++) {
+              const r = rows[i];
+              if (r.length >= 5) {
+                const no = (r[0] || '').trim();
+                let mulai = (r[1] || '').trim().replace('.', ':');
+                let selesai = (r[2] || '').trim().replace('.', ':');
+                const act = (r[4] || '').trim();
+                const standby = (r[11] || '—').trim();
+                const noNum = parseInt(no, 10);
+                if (!isNaN(noNum) && noNum >= 1 && noNum <= 25 && mulai && selesai) {
+                  if (mulai.split(':')[0].length === 1) mulai = '0' + mulai;
+                  if (selesai.split(':')[0].length === 1) selesai = '0' + selesai;
+                  newSched.push({ no: noNum, start: mulai.slice(0, 5), end: selesai.slice(0, 5), name: act, next: standby });
+                }
+              }
+            }
+            if (newSched.length >= 5) {
+              schedule = newSched;
+              const now = new Date();
+              const b = pipWin.document.getElementById('sync-status');
+              if (b) b.textContent = '🟢 LIVE (' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ')';
+            }
+          } catch(e){}
+        };
+
+        setInterval(() => {
+          const now = new Date();
+          const curSec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+          const curMin = now.getHours() * 60 + now.getMinutes();
+
+          const h = String(now.getHours()).padStart(2, '0');
+          const m = String(now.getMinutes()).padStart(2, '0');
+          const s = String(now.getSeconds()).padStart(2, '0');
+          const el = pipWin.document.getElementById('live-clock');
+          if (el) el.textContent = h + ':' + m + ':' + s;
+
+          // Gate countdown
+          const gateTargetSec = 15 * 3600;
+          const diffGateSec = gateTargetSec - curSec;
+          const gEl = pipWin.document.getElementById('gate-cd');
+          if (gEl) {
+            gEl.textContent = diffGateSec > 0 ? formatHMS(diffGateSec) : "GATE OPEN";
+          }
+
+          let matched = null;
+          for (let i = 0; i < schedule.length; i++) {
+            const item = schedule[i];
+            if (curMin >= toMin(item.start) && curMin < toMin(item.end)) {
+              matched = item;
+              break;
+            }
+          }
+          const tEl = pipWin.document.getElementById('act-title');
+          const aEl = pipWin.document.getElementById('act-name');
+          const wEl = pipWin.document.getElementById('act-window');
+          const sEl = pipWin.document.getElementById('act-standby');
+          const pEl = pipWin.document.getElementById('stage-cd-pill');
+          const barEl = pipWin.document.getElementById('stage-progress');
+
+          if (matched) {
+            const sSec = toSec(matched.start);
+            const eSec = toSec(matched.end);
+            const remSec = eSec - curSec;
+            const totalSlotSec = eSec - sSec;
+            const pct = Math.min(100, Math.max(0, ((curSec - sSec) / totalSlotSec) * 100));
+
+            if (tEl) tEl.textContent = "TAHAP AKTIF (ON STAGE)";
+            if (aEl) aEl.textContent = matched.name;
+            if (wEl) wEl.textContent = matched.start + ' – ' + matched.end + ' WIB';
+            if (sEl) sEl.textContent = '▶ ' + matched.next;
+            if (barEl) barEl.style.width = pct + '%';
+
+            if (pEl) {
+              if (remSec > 300) {
+                pEl.className = "stage-countdown-pill";
+                pEl.textContent = "⏳ SISA " + formatDuration(remSec);
+                if (barEl) barEl.style.background = '#10b981';
+              } else if (remSec > 0) {
+                pEl.className = "stage-countdown-pill warning";
+                pEl.textContent = "⚠️ SISA " + formatDuration(remSec);
+                if (barEl) barEl.style.background = '#f59e0b';
+              } else {
+                pEl.className = "stage-countdown-pill overdue";
+                pEl.textContent = "🚨 OVERDUE " + formatDuration(remSec);
+                if (barEl) barEl.style.background = '#ef4444';
+              }
+            }
+          }
+        }, 1000);
+
+        setInterval(pipSync, 10000);
+      } catch (e) {
+        alert('PiP tidak didukung atau dibatalkan.');
+      }
+    } else {
+      window.open(window.location.href, '_blank', 'width=400,height=290,menubar=no,toolbar=no,location=no,status=no');
+    }
+  }
+</script>
+</body>
+</html>
